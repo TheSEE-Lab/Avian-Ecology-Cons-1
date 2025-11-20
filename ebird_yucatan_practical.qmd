@@ -1,0 +1,401 @@
+
+---
+title: "eBird Yucatan Practical"
+format:
+  html:
+    toc: true
+    code-fold: true
+editor: source
+lang: en
+---
+
+# Overview
+
+You will work with three small teaching datasets supplied with this practical:
+
+- `ebird_yucatan_checklists.csv` – checklist-level data (location, date, land cover, effort).
+- `ebird_yucatan.csv` – species-level detections linked to checklists.
+- `ebird_yucatan_traits.csv` – simple functional traits for a subset of Yucatan bird species.
+
+The workflow is **loosely inspired** by:
+
+- Stewart et al. (2025) – threat abatement and conservation of global bird diversity.
+- Matthews et al. (2024) – global loss of avian functional and phylogenetic diversity.
+
+We will not reproduce the papers, but we will **borrow their ideas**:
+habitat loss, extinction risk, and functional diversity.
+
+
+# 0. Getting started
+
+## 0.1. Set your working directory
+
+Place all files in the same directory:
+
+- this Quarto file: `ebird_yucatan_practical.qmd`
+- `ebird_yucatan_checklists.csv`
+- `ebird_yucatan.csv`
+- `ebird_yucatan_traits.csv`
+
+Then set the working directory in R (only if needed):
+
+```{r}
+# setwd("path/to/your/folder")  # <- adjust and uncomment if necessary
+```
+
+## 0.2. Load required packages
+
+We will use only widely available R packages. First - install, manually, the `pacman` package if needed.
+
+```{r message=FALSE, warning=FALSE}
+library(pacman)
+
+p_load(
+    tidyverse, sf, rnaturalearth,
+    rnaturalearthdata, FD,
+    ggrepel, textshape
+)
+```
+
+## 0.3. Load the datasets
+
+```{r}
+checklists <- read_csv("ebird_yucatan_checklists.csv")
+detections <- read_csv("ebird_yucatan.csv")
+traits     <- read_csv("ebird_yucatan_traits.csv")
+
+glimpse(checklists)
+glimpse(detections)
+glimpse(traits)
+```
+
+**Task 0.1 (students)**
+
+1. How many checklists are there in the dataset?
+2. Over which years do we have data?
+3. Which habitats are represented?
+
+
+# 1. Mapping Yucatan Peninsula checklists and richness
+
+In this part, we will:
+
+1. Plot all checklists on a map of the Yucatan Peninsula region.
+2. Compute basic species richness per checklist.
+3. Visualise spatial variation in richness.
+
+## 1.1. Regional boundary and checklist locations
+
+```{r}
+# get Yucatan Peninsula + surrounding regions boundaries
+mx_states <- rnaturalearth::ne_states(country = "Mexico", returnclass = "sf") |>
+  filter(name %in% c("Yucatán", "Campeche", "Quintana Roo", "Tabasco", "Chiapas"))
+belize <- rnaturalearth::ne_countries(country = "Belize", returnclass = "sf")
+guatemala <- rnaturalearth::ne_countries(country = "Guatemala", returnclass = "sf")
+
+checklists_sf <- checklists |>
+  st_as_sf(coords = c("longitude","latitude"), crs = 4326)
+
+ggplot() +
+  geom_sf(data = mx_states, fill = "grey95", color = "grey40") +
+  geom_sf(data = belize, fill = "grey90", color = "grey30") +
+  geom_sf(data = guatemala, fill = "grey90", color = "grey30") +
+  geom_sf(data = checklists_sf, alpha = 0.6, size = 1) +
+  coord_sf() +
+  theme_minimal() +
+  labs(title = "eBird-style checklists in Yucatan Peninsula region",
+       x = "Longitude", y = "Latitude")
+```
+
+**Task 1.1**
+
+- Which parts of the Yucatan Peninsula are sampled most densely?
+- Do some land cover types seem under-sampled? (Use the code below to colour by land cover.)
+
+```{r}
+ggplot() +
+  geom_sf(data = mx_states, fill = "grey95", color = "grey40") +
+  geom_sf(data = belize, fill = "grey90", color = "grey30") +
+  geom_sf(data = guatemala, fill = "grey90", color = "grey30") +
+  geom_sf(data = checklists_sf, aes(color = land_cover), alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Checklists by land cover type")
+```
+
+## 1.2. Species richness per checklist
+
+The checklist data already include `n_species` (number of distinct species recorded).
+We can visualise how richness varies spatially.
+
+```{r}
+ggplot() +
+  geom_sf(data = mx_states, fill = "grey95", color = "grey40") +
+  geom_sf(data = belize, fill = "grey90", color = "grey30") +
+  geom_sf(data = guatemala, fill = "grey90", color = "grey30") +
+  geom_sf(data = checklists_sf, aes(color = n_species), size = 1) +
+  scale_color_viridis_c(option = "plasma") +
+  theme_minimal() +
+  labs(title = "Species richness per checklist",
+       color = "Richness")
+```
+
+**Task 1.2**
+
+1. Which land cover types have the highest average species richness?
+2. Use the code below to summarise richness by land cover and interpret the result.
+
+```{r}
+checklists |>
+  group_by(land_cover) |>
+  summarise(mean_richness = mean(n_species),
+            sd_richness   = sd(n_species),
+            n_checklists  = n())
+```
+
+
+# 2. Species trends: reporting rates over time
+
+Inspired by conservation concerns in the papers, we can examine **reporting rates** of two
+species through time in this teaching dataset.
+
+## 2.1. Prepare annual reporting data
+
+Reporting rate = proportion of complete checklists on which the species was recorded.
+
+```{r}
+# total number of checklists per year
+total_per_year <- checklists |>
+  count(year, name = "n_checklists")
+
+# detections per species-year (presence on a checklist)
+species_year <- detections |>
+  distinct(checklist_ID, species_code) |>
+  left_join(checklists |> select(checklist_ID, year), by = "checklist_ID") |>
+  count(species_code, year, name = "n_checklists_with_species") |>
+  left_join(total_per_year, by = "year") |>
+  mutate(reporting_rate = n_checklists_with_species / n_checklists)
+
+head(species_year)
+```
+
+## 2.2. Plot reporting rate trends
+
+```{r}
+# Select some species of interest
+species_year |>
+  filter(species_code %in% c("yebsap","plapar")) |>
+  left_join(traits |> select(species_code, scientific_name), by = "species_code") |>
+  ggplot(aes(x = year, y = reporting_rate, color = scientific_name)) +
+  geom_line(size = 1) +
+  geom_point() +
+  theme_minimal() +
+  labs(title = "Reporting rate trends for two focal species",
+       y = "Reporting rate (proportion of checklists)",
+       x = "Year",
+       color = "Species")
+```
+
+**Task 2.1**
+
+1. Compare the reporting rate trends of the two species.  
+2. Which species appears more “secure” in the dataset? Why?
+3. How might habitat loss (as in Stewart et al.) affect these trends in real data?
+
+
+# 3. Land cover comparison: community composition
+
+We want to know whether land cover types differ in their **species composition**.
+
+## 3.1. Species-by-land-cover table
+
+```{r}
+# join detections to checklist land cover
+det_with_hab <- detections |>
+  left_join(checklists |> select(checklist_ID, land_cover), by = "checklist_ID")
+
+species_habitat <- det_with_hab |>
+  group_by(land_cover, scientific_name) |>
+  summarise(n_checklists = n_distinct(checklist_ID),
+            total_count  = sum(count), .groups = "drop")
+
+species_habitat
+```
+
+## 3.2. Most frequently detected species per land cover
+
+```{r}
+species_habitat |>
+  group_by(land_cover) |>
+  slice_max(order_by = n_checklists, n = 5) |>
+  arrange(land_cover, desc(n_checklists))
+```
+
+**Task 3.1**
+
+1. Which species dominate urban vs forest checklists?  
+2. Do the dominant species match your expectations for those land cover types?
+
+
+# 4. Functional diversity by land cover
+
+Now we bring in **functional traits** to approximate ideas from Matthews et al. (functional
+diversity and non-random loss of traits).
+
+We will:
+
+1. Create a trait matrix for the species in our dataset.
+2. Compute simple functional diversity (FD) indices for each land cover type.
+3. Visualise trait structure across land cover types.
+
+## 4.1. Trait matrix for species
+
+We will use numeric traits:
+
+- body mass (g)
+- beak length culmen (mm)
+- wing length (mm)
+- beak width (mm)
+
+```{r}
+# species present in traits data
+species_present <- traits |>
+  distinct(scientific_name) |>
+  pull()
+
+traits_num <- traits |>
+  filter(scientific_name %in% species_present) |>
+  arrange(scientific_name) |>
+  column_to_rownames("scientific_name") |>
+  select(body_mass_g, beak_length_culmen, wing_length, beak_width)
+
+head(traits_num)
+```
+
+## 4.2. Species relative abundance by land cover
+
+`FD::dbFD()` expects species abundances (or presence–absence) per site.
+Here, we treat **land cover types as sites** and use `total_count` as abundance.
+
+```{r}
+abund_habitat <- species_habitat |>
+  filter(scientific_name %in% species_present) |>
+  arrange(scientific_name) |>
+  select(land_cover, scientific_name, total_count) |>
+  pivot_wider(names_from = scientific_name, values_from = total_count, values_fill = 0) |>
+  column_to_rownames("land_cover")
+
+abund_habitat[, 1:7]
+```
+
+## 4.3. Compute functional diversity indices
+
+We will calculate:
+
+- FRic – functional richness (volume of convex hull in trait space)
+- FEve – functional evenness
+- FDiv – functional divergence
+- RaoQ – Rao's quadratic entropy
+
+```{r}
+fd_res <- dbFD(traits_num, abund_habitat, calc.FRic = TRUE, calc.FDiv = TRUE,
+               calc.FGR = FALSE, m = "max", messages = FALSE)
+
+fd_indices <- tibble(
+  land_cover = rownames(abund_habitat),
+  FRic    = fd_res$FRic,
+  FEve    = fd_res$FEve,
+  FDiv    = fd_res$FDiv,
+  RaoQ    = fd_res$RaoQ
+)
+
+fd_indices
+```
+
+## 4.4. Visualising functional diversity differences
+
+```{r}
+fd_indices_long <- fd_indices |>
+  pivot_longer(cols = -land_cover, names_to = "index", values_to = "value")
+
+ggplot(fd_indices_long, aes(x = land_cover, y = value, fill = land_cover)) +
+  geom_col() +
+  facet_wrap(~ index, scales = "free_y") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Functional diversity of bird communities by land cover")
+```
+
+**Task 4.1**
+
+1. Which land cover type has the highest functional richness (FRic)?  
+2. Does any land cover show low FRic but relatively high FEve or FDiv? How might that happen?  
+3. Relate your findings to the idea that anthropogenic extinctions can be **trait-biased**
+   and reduce specific ecological functions (Matthews et al.).
+
+
+# 5. Trait distributions in different land cover types
+
+We can also look directly at traits of species that dominate each land cover type.
+
+## 5.1. Trait distributions weighted by abundance
+
+```{r}
+traits_long <- det_with_hab |>
+  group_by(land_cover, scientific_name) |>
+  summarise(total_count = sum(count), .groups = "drop") |>
+  left_join(traits, by = "scientific_name")
+
+ggplot(traits_long, aes(x = body_mass_g, weight = total_count, fill = land_cover)) +
+  geom_histogram(alpha = 0.5, bins = 20, position = "identity") +
+  theme_minimal() +
+  labs(title = "Body mass distribution by land cover (abundance-weighted)",
+       x = "Body mass (g)", y = "Weighted frequency")
+```
+
+**Task 5.1**
+
+1. Are large-bodied species more frequent in any particular land cover type?  
+2. How would selective loss of large-bodied species influence ecosystem functioning?
+
+A similar plot can be made for wing or beak length. Try modifying the code above.
+
+
+# 6. Optional extension: PCA of traits
+
+For a more visual representation of the trait space, we can perform a simple PCA.
+
+```{r}
+traits_scaled <- scale(traits_num)
+pca <- prcomp(traits_scaled)
+
+pca_scores <- as_tibble(pca$x, rownames = "scientific_name") |>
+  left_join(traits |> select(scientific_name, trophic_niche), by = "scientific_name")
+
+ggplot(pca_scores, aes(x = PC1, y = PC2, label = scientific_name,
+                       color = trophic_niche)) +
+  geom_point(size = 2) +
+  ggrepel::geom_text_repel(size = 3, max.overlaps = 20) +
+  theme_minimal() +
+  labs(title = "Trait space of Yucatan Peninsula birds (teaching dataset)",
+       subtitle = "PC1/PC2 of body mass, beak length, wing length, beak width")
+```
+
+**Task 6.1 (optional)**
+
+- Identify which traits mainly drive PC1 and PC2 (use `summary(pca)`).
+- Discuss where species with different trophic niches lie in this space.
+
+
+# 7. Wrap-up questions
+
+1. How do species richness and functional diversity vary among land cover types in this dataset?  
+2. If habitat loss continues in the Yucatan Peninsula, which land cover types (and associated communities) do you think are at greatest risk?  
+3. How could you integrate **real eBird data** and **more detailed trait datasets** (e.g. AVONET)
+   to test similar questions at larger scales?  
+4. How do your findings conceptually link to the key messages of Stewart et al. and Matthews et al.?
+
+You have completed the core practical. Feel free to extend the analyses, for example by:
+
+- focusing on a single species of conservation concern;
+- investigating latitudinal gradients;
+- or comparing different regions within the Yucatan Peninsula.
