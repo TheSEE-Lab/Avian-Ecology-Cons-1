@@ -43,6 +43,101 @@ Then set the working directory in R (only if needed):
 # setwd("path/to/your/folder")  # <- adjust and uncomment if necessary
 ```
 
+
+# 0A. Initial data exploration with Microsoft Excel
+
+Before diving into R, let's get familiar with the datasets using Microsoft Excel (or LibreOffice Calc, Google Sheets, etc.). Open the three CSV files in your spreadsheet software.
+
+## Exercise 0A.1: Exploring the checklist data
+
+Open `ebird_yucatan_checklists.csv` in Excel.
+
+**Tasks:**
+
+1. **Count rows**: How many checklists are in the dataset?  
+   *Hint: Look at the row numbers or use `=COUNTA()` function.*
+
+2. **Examine columns**: What variables are recorded for each checklist?  
+   List at least 5 column names.
+
+3. **Date range**: What are the earliest and latest observation dates?  
+   *Hint: Sort the `date` column or use `=MIN()` and `=MAX()` functions.*
+
+4. **Land cover types**: How many different land cover categories are there?  
+   *Hint: Use a Pivot Table or filter the `land_cover` column to see unique values.*
+
+5. **Species richness**: Create a simple histogram of `n_species` values.
+   - Select the `n_species` column
+   - Insert → Chart → Histogram
+   - What is the typical range of species per checklist?
+
+6. **Effort hours**: What is the average effort in hours per checklist?  
+   *Hint: Use `=AVERAGE()` on the `effort_hours` column.*
+
+## Exercise 0A.2: Exploring the species detection data
+
+Open `ebird_yucatan.csv` in Excel.
+
+**Tasks:**
+
+1. **Total observations**: How many species detection records are there?
+
+2. **Species diversity**: How many unique species are in the dataset?  
+   *Hint: Copy the `scientific_name` column to a new sheet, then use Remove Duplicates (Data tab).*
+
+3. **Most common species**: Use a Pivot Table to find the most frequently detected species:
+   - Create a Pivot Table with `scientific_name` in Rows
+   - Add `checklist_ID` to Values (Count)
+   - Sort by count descending
+   - Which species appears in the most checklists?
+
+4. **Abundance patterns**: What is the maximum count recorded for any species in a single checklist?  
+   *Hint: Use `=MAX()` on the `count` column.*
+
+5. **Link to checklists**: Pick one `checklist_ID` value and see how many species were recorded on that checklist.  
+   *Hint: Use AutoFilter on the `checklist_ID` column.*
+
+## Exercise 0A.3: Exploring the trait data
+
+Open `ebird_yucatan_traits.csv` in Excel.
+
+**Tasks:**
+
+1. **Trait coverage**: How many species have trait data available?
+
+2. **Body mass range**: What are the smallest and largest body masses in the dataset?  
+   *Hint: Use `=MIN()` and `=MAX()` on `body_mass_g`.*
+
+3. **Trophic niches**: What different trophic niche categories are present?  
+   *Hint: Filter or create a Pivot Table on `trophic_niche`.*
+
+4. **Trait relationships**: Create a scatter plot of `body_mass_g` vs `wing_length`:
+   - Select both columns
+   - Insert → Chart → Scatter plot
+   - Do you see any relationship?
+
+5. **Beak dimensions**: Which species has the longest beak (culmen)?  
+   *Hint: Sort by `beak_length_culmen` descending.*
+
+## Exercise 0A.4: Linking datasets (challenge - for homework)
+
+**Tasks:**
+
+1. Using Excel's `VLOOKUP` or `XLOOKUP`, try to match species from the detection file to their traits:
+   - In the detections file, add a new column for `body_mass_g`
+   - Use a lookup formula to fetch body mass from the traits file
+   - Formula example: `=VLOOKUP(B2, traits!A:B, 2, FALSE)`
+
+2. Calculate the average body mass of species detected in your first checklist.
+
+**Reflection questions:**
+
+- What patterns did you notice in the data?
+- Which land cover type has the most sampling effort?
+- What are some challenges of working with these data in Excel?
+- What questions would be easier to answer with R?
+
+
 ## 0.2. Load required packages
 
 We will use only widely available R packages. First - install, manually, the `pacman` package if needed.
@@ -57,7 +152,9 @@ p_load(
 )
 ```
 
-## 0.3. Load the datasets
+## 0.3. Load the datasets in R
+
+Now we'll load the same datasets into R for more sophisticated analysis.
 
 ```{r}
 checklists <- read_csv("ebird_yucatan_checklists.csv")
@@ -71,9 +168,9 @@ glimpse(traits)
 
 **Task 0.1 (students)**
 
-1. How many checklists are there in the dataset?
+1. How many checklists are there in the dataset? Compare with your Excel count.
 2. Over which years do we have data?
-3. Which habitats are represented?
+3. Which land cover types are represented?
 
 
 # 1. Mapping Yucatan Peninsula checklists and richness
@@ -151,6 +248,183 @@ checklists |>
             sd_richness   = sd(n_species),
             n_checklists  = n())
 ```
+
+
+## 1.3. Spatial density mapping: sampling effort and species abundance
+
+To better understand spatial patterns in eBird data, we can create **density maps** using
+kernel density estimation. This is useful for:
+
+1. Visualising **sampling effort** (where are checklists concentrated?)
+2. Mapping **species abundance** (where are particular species most abundant?)
+
+We will use the `ggplot2::stat_density_2d()` function to create smooth density surfaces.
+
+### 1.3.1. Sampling effort density
+
+```{r}
+# Create a bounding box for the region
+region_bbox <- st_bbox(c(xmin = -92, xmax = -86, ymin = 15, ymax = 22), crs = 4326)
+
+ggplot() +
+  geom_sf(data = mx_states, fill = "grey95", color = "grey40") +
+  geom_sf(data = belize, fill = "grey90", color = "grey30") +
+  geom_sf(data = guatemala, fill = "grey90", color = "grey30") +
+  stat_density_2d(data = checklists, 
+                  aes(x = longitude, y = latitude, fill = after_stat(level)),
+                  geom = "polygon", alpha = 0.5, bins = 10) +
+  scale_fill_viridis_c(option = "magma") +
+  coord_sf(xlim = c(-92, -86), ylim = c(15, 22)) +
+  theme_minimal() +
+  labs(title = "eBird sampling effort density",
+       subtitle = "Kernel density estimation of checklist locations",
+       fill = "Density",
+       x = "Longitude", y = "Latitude")
+```
+
+### 1.3.2. Species abundance density
+
+Now let's map the spatial density of a particular species. We'll select a common species
+and map where it's most frequently detected.
+
+```{r}
+# Choose a common species (adjust species_code as needed)
+focal_species <- "yebsap"  # Yellow-bellied Sapsucker as example
+
+# Get detections with location data
+species_detections <- detections |>
+  filter(species_code == focal_species) |>
+  left_join(checklists |> select(checklist_ID, longitude, latitude), 
+            by = "checklist_ID")
+
+# Plot species abundance density
+ggplot() +
+  geom_sf(data = mx_states, fill = "grey95", color = "grey40") +
+  geom_sf(data = belize, fill = "grey90", color = "grey30") +
+  geom_sf(data = guatemala, fill = "grey90", color = "grey30") +
+  stat_density_2d(data = species_detections,
+                  aes(x = longitude, y = latitude, fill = after_stat(level)),
+                  geom = "polygon", alpha = 0.6, bins = 8) +
+  scale_fill_viridis_c(option = "plasma") +
+  coord_sf(xlim = c(-92, -86), ylim = c(15, 22)) +
+  theme_minimal() +
+  labs(title = paste("Abundance density:", focal_species),
+       subtitle = "Kernel density of species detections",
+       fill = "Density",
+       x = "Longitude", y = "Latitude")
+```
+
+### 1.3.3. Weighted abundance density
+
+We can also weight the density by actual counts, giving more emphasis to locations
+where the species was seen in higher numbers.
+
+```{r}
+ggplot() +
+  geom_sf(data = mx_states, fill = "grey95", color = "grey40") +
+  geom_sf(data = belize, fill = "grey90", color = "grey30") +
+  geom_sf(data = guatemala, fill = "grey90", color = "grey30") +
+  stat_density_2d(data = species_detections,
+                  aes(x = longitude, y = latitude, 
+                      fill = after_stat(level), weight = count),
+                  geom = "polygon", alpha = 0.6, bins = 8) +
+  scale_fill_viridis_c(option = "plasma") +
+  coord_sf(xlim = c(-92, -86), ylim = c(15, 22)) +
+  theme_minimal() +
+  labs(title = paste("Weighted abundance density:", focal_species),
+       subtitle = "Kernel density weighted by observation counts",
+       fill = "Density",
+       x = "Longitude", y = "Latitude")
+```
+
+### 1.3.4. Hexagonal binning for abundance extrapolation
+
+Hexagonal bins provide an alternative way to visualize spatial patterns and can be used
+to extrapolate species abundance across the region. This approach aggregates observations
+into hexagonal cells, which provides a smooth representation while being computationally
+efficient.
+
+```{r}
+# Hexbin map of sampling effort
+ggplot() +
+  geom_sf(data = mx_states, fill = "grey95", color = "grey40") +
+  geom_sf(data = belize, fill = "grey90", color = "grey30") +
+  geom_sf(data = guatemala, fill = "grey90", color = "grey30") +
+  geom_hex(data = checklists, 
+           aes(x = longitude, y = latitude), 
+           bins = 30, alpha = 0.7) +
+  scale_fill_viridis_c(option = "magma", trans = "log10") +
+  coord_sf(xlim = c(-92, -86), ylim = c(15, 22)) +
+  theme_minimal() +
+  labs(title = "Sampling effort: hexagonal binning",
+       subtitle = "Number of checklists per hexagonal cell",
+       fill = "Checklists\n(log scale)",
+       x = "Longitude", y = "Latitude")
+```
+
+```{r}
+# Hexbin map of species abundance
+ggplot() +
+  geom_sf(data = mx_states, fill = "grey95", color = "grey40") +
+  geom_sf(data = belize, fill = "grey90", color = "grey30") +
+  geom_sf(data = guatemala, fill = "grey90", color = "grey30") +
+  geom_hex(data = species_detections,
+           aes(x = longitude, y = latitude),
+           bins = 25, alpha = 0.7) +
+  scale_fill_viridis_c(option = "plasma", name = "Detections") +
+  coord_sf(xlim = c(-92, -86), ylim = c(15, 22)) +
+  theme_minimal() +
+  labs(title = paste("Species distribution:", focal_species),
+       subtitle = "Hexagonal binning of detection locations",
+       x = "Longitude", y = "Latitude")
+```
+
+```{r}
+# Hexbin map weighted by abundance (sum of counts per cell)
+ggplot() +
+  geom_sf(data = mx_states, fill = "grey95", color = "grey40") +
+  geom_sf(data = belize, fill = "grey90", color = "grey30") +
+  geom_sf(data = guatemala, fill = "grey90", color = "grey30") +
+  stat_summary_hex(data = species_detections,
+                   aes(x = longitude, y = latitude, z = count),
+                   fun = sum, bins = 25, alpha = 0.7) +
+  scale_fill_viridis_c(option = "plasma", name = "Total\ncount") +
+  coord_sf(xlim = c(-92, -86), ylim = c(15, 22)) +
+  theme_minimal() +
+  labs(title = paste("Abundance extrapolation:", focal_species),
+       subtitle = "Total counts aggregated in hexagonal cells",
+       x = "Longitude", y = "Latitude")
+```
+
+```{r}
+# Mean abundance per hexagonal cell
+ggplot() +
+  geom_sf(data = mx_states, fill = "grey95", color = "grey40") +
+  geom_sf(data = belize, fill = "grey90", color = "grey30") +
+  geom_sf(data = guatemala, fill = "grey90", color = "grey30") +
+  stat_summary_hex(data = species_detections,
+                   aes(x = longitude, y = latitude, z = count),
+                   fun = mean, bins = 25, alpha = 0.7) +
+  scale_fill_viridis_c(option = "plasma", name = "Mean\ncount") +
+  coord_sf(xlim = c(-92, -86), ylim = c(15, 22)) +
+  theme_minimal() +
+  labs(title = paste("Mean abundance:", focal_species),
+       subtitle = "Average counts per hexagonal cell",
+       x = "Longitude", y = "Latitude")
+```
+
+**Task 1.3**
+
+1. Where is sampling effort most concentrated in the Yucatan Peninsula?
+2. How does the distribution of your focal species compare to overall sampling effort?
+3. Choose a different species from the dataset and create its abundance density map.
+   What does this tell you about the species' distribution?
+4. Why might it be important to account for sampling effort when interpreting
+   species distribution patterns?
+5. Compare the hexagonal binning approach to kernel density estimation. What are the
+   advantages of each method?
+6. How do the total count and mean count hexbin maps differ in their interpretation?
+   Which is more useful for understanding species distribution?
 
 
 # 2. Species trends: reporting rates over time
