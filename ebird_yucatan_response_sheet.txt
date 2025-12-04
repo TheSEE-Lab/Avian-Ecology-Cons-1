@@ -1,0 +1,528 @@
+================================================================================
+eBird YUCATAN PRACTICAL - STUDENT RESPONSE SHEET
+================================================================================
+
+Student Name: _______________________________
+Date: _______________________________________
+Course: Avian Ecology and Conservation
+
+
+================================================================================
+SECTION 0A: INITIAL DATA EXPLORATION WITH EXCEL
+================================================================================
+
+Exercise 0A.1: Exploring the checklist data
+------------------------------------------------------------
+
+1. How many checklists are in the dataset?
+   Answer: 
+
+2. List at least 5 column names from the checklist data:
+   - 
+   - 
+   - 
+   - 
+   - 
+
+3. What are the earliest and latest observation dates?
+   Earliest: 
+   Latest: 
+
+4. How many different land cover categories are there? List them:
+   Number: 
+   Categories: 
+
+5. What is the typical range of species per checklist (from histogram)?
+   Answer: 
+
+6. What is the average effort in hours per checklist?
+   Answer: 
+
+
+Exercise 0A.2: Exploring the species detection data
+------------------------------------------------------------
+
+1. How many species detection records are there?
+   Answer: 
+
+2. How many unique species are in the dataset?
+   Answer: 
+
+3. Which species appears in the most checklists?
+   Answer: 
+
+4. What is the maximum count recorded for any species in a single checklist?
+   Answer: 
+
+5. Pick one checklist_ID and count how many species were recorded:
+   Checklist ID: 
+   Number of species: 
+
+
+Exercise 0A.3: Exploring the trait data
+------------------------------------------------------------
+
+1. How many species have trait data available?
+   Answer: 
+
+2. What are the smallest and largest body masses in the dataset?
+   Smallest: 
+   Largest: 
+
+3. What different trophic niche categories are present?
+   Answer: 
+
+4. Do you see any relationship between body mass and wing length (from scatter plot)?
+   Answer: 
+
+5. Which species has the longest beak (culmen)?
+   Answer: 
+
+
+Exercise 0A.4: Reflection questions
+------------------------------------------------------------
+
+1. What patterns did you notice in the data?
+   Answer: 
+
+
+2. Which land cover type has the most sampling effort?
+   Answer: 
+
+
+3. What are some challenges of working with these data in Excel?
+   Answer: 
+
+
+4. What questions would be easier to answer with R?
+   Answer: 
+
+
+================================================================================
+SECTION 0: GETTING STARTED IN R
+================================================================================
+
+Task 0.1: Understanding the data
+------------------------------------------------------------
+
+1. How many checklists are there in the dataset? Compare with your Excel count.
+   Answer: 
+   Comparison: 
+
+2. Over which years do we have data?
+   Answer: 
+
+3. Which land cover types are represented?
+   Answer: 
+
+4. CODE UNDERSTANDING: What does the glimpse() function do?
+   Answer: 
+
+5. CODE UNDERSTANDING: What symbol (|>) connects parts of the code? What is its purpose?
+   Answer: 
+
+
+================================================================================
+SECTION 1: MAPPING YUCATAN PENINSULA CHECKLISTS AND RICHNESS
+================================================================================
+
+Task 1.1: Spatial patterns
+------------------------------------------------------------
+
+1. Which parts of the Yucatan Peninsula are sampled most densely?
+   Answer: 
+
+2. Do some land cover types seem under-sampled?
+   Answer: 
+
+3. CODE UNDERSTANDING: In the map code, what does geom_sf() do?
+   Answer: 
+
+4. Why might some areas have more checklists than others? List at least two possible reasons.
+   - 
+   - 
+
+
+Task 1.2: Richness patterns
+------------------------------------------------------------
+
+1. Which land cover types have the highest average species richness?
+   Answer: 
+
+2. Interpret the summary statistics for richness by land cover:
+   Answer: 
+
+
+3. CODE UNDERSTANDING: What does group_by(land_cover) do?
+   Answer: 
+
+4. CODE UNDERSTANDING: What is the difference between mean_richness and sd_richness?
+   Answer: 
+
+5. Which land cover shows the most variation (from boxplot)?
+   Answer: 
+
+
+Task 1.3: Spatial density patterns
+------------------------------------------------------------
+
+1. Where is sampling effort most concentrated in the Yucatan Peninsula?
+   Answer: 
+
+2. How does the distribution of your focal species compare to overall sampling effort?
+   Answer: 
+
+3. Choose a different species and describe its distribution pattern:
+   Species chosen: 
+   Distribution pattern: 
+
+4. Why is it important to account for sampling effort when interpreting species distributions?
+   Answer: 
+
+5. Compare hexagonal binning to kernel density estimation. Advantages of each?
+   Hexagonal binning: 
+   Kernel density: 
+
+6. How do total count and mean count hexbin maps differ in interpretation?
+   Answer: 
+
+7. CODE UNDERSTANDING: What does stat_density_2d() do? Why is it useful?
+   Answer: 
+
+8. CODE UNDERSTANDING: What does the bins = 30 parameter control?
+   Answer: 
+
+
+================================================================================
+SECTION 2: SPECIES TRENDS AND TEMPORAL PATTERNS
+================================================================================
+
+Task 2.1: Temporal trends
+------------------------------------------------------------
+
+1. Compare the reporting rate trends of the two focal species:
+   Answer: 
+
+2. Which species appears more "secure" in the dataset? Why?
+   Answer: 
+
+3. How might habitat loss affect these trends in real data?
+   Answer: 
+
+4. CODE UNDERSTANDING: What does reporting_rate represent? How is it calculated?
+   Answer: 
+
+5. Calculate or describe annual percentage change for each species:
+   Answer: 
+
+
+Task 2.2: Seasonal patterns
+------------------------------------------------------------
+
+1. Which months show the highest species richness? Why might this be?
+   Answer: 
+
+2. Are there months with notably lower richness? What might explain this?
+   Answer: 
+
+3. CODE UNDERSTANDING: What does lubridate::month(date, label = TRUE) do?
+   Answer: 
+
+
+Task 2.3: Effort analysis
+------------------------------------------------------------
+
+1. Is there a relationship between effort and species detected?
+   Answer: 
+
+2. What does this tell us about comparing checklists with different effort levels?
+   Answer: 
+
+3. CODE UNDERSTANDING: What does geom_smooth(method = "lm") add to the plot?
+   Answer: 
+
+4. Should we control for effort when comparing richness across habitats? Why?
+   Answer: 
+
+
+================================================================================
+SECTION 3: LAND COVER COMPARISON AND COMMUNITY COMPOSITION
+================================================================================
+
+Task 3.1: Community composition
+------------------------------------------------------------
+
+1. Which species dominate urban vs forest checklists?
+   Urban: 
+   Forest: 
+
+2. Do the dominant species match your expectations for those land cover types?
+   Answer: 
+
+3. Which habitat specialists appear in the top 10 most detected species?
+   Answer: 
+
+4. CODE UNDERSTANDING: What does slice_max() do?
+   Answer: 
+
+
+Task 3.2: Habitat specialization
+------------------------------------------------------------
+
+1. How many species are habitat specialists vs generalists?
+   Specialists: 
+   Generalists: 
+   Intermediate: 
+
+2. Why might generalist species be more resilient to habitat loss?
+   Answer: 
+
+3. Identify 2-3 specialist species and their habitats:
+   - 
+   - 
+   - 
+
+4. CODE UNDERSTANDING: What does case_when() do?
+   Answer: 
+
+
+================================================================================
+SECTION 4: FUNCTIONAL DIVERSITY BY LAND COVER
+================================================================================
+
+Task 4.1: Functional diversity
+------------------------------------------------------------
+
+1. Which land cover type has the highest functional richness (FRic)?
+   Answer: 
+
+2. Does any land cover show low FRic but high FEve or FDiv? How might that happen?
+   Answer: 
+
+3. Relate findings to trait-biased extinctions (Matthews et al.):
+   Answer: 
+
+4. CODE UNDERSTANDING: What does pivot_longer() do to the data?
+   Answer: 
+
+5. Rank land covers by functional diversity. Does this match species richness ranking?
+   Functional diversity ranking: 
+   Species richness ranking: 
+   Comparison: 
+
+
+Task 4.2: Taxonomic vs functional diversity
+------------------------------------------------------------
+
+1. Do land covers with high species richness always have high functional diversity?
+   Answer: 
+
+2. What does it mean if an area has high species richness but low functional diversity?
+   Answer: 
+
+3. Which metric might be more important for conservation? Why?
+   Answer: 
+
+
+================================================================================
+SECTION 5: TRAIT DISTRIBUTIONS IN DIFFERENT LAND COVER TYPES
+================================================================================
+
+Task 5.1: Trait distributions
+------------------------------------------------------------
+
+1. Are large-bodied species more frequent in any particular land cover type?
+   Answer: 
+
+2. How would selective loss of large-bodied species influence ecosystem functioning?
+   Answer: 
+
+3. Describe differences in beak length between habitats:
+   Answer: 
+
+4. CODE UNDERSTANDING: What does the weight = total_count parameter do?
+   Answer: 
+
+
+Task 5.2: Trophic ecology
+------------------------------------------------------------
+
+1. Which trophic groups dominate in forests vs urban areas?
+   Forests: 
+   Urban: 
+
+2. What does the trophic structure tell you about ecosystem functioning in each habitat?
+   Answer: 
+
+3. If forests were converted to agriculture, which feeding guilds would likely decline most?
+   Answer: 
+
+4. CODE UNDERSTANDING: What does position = "fill" do in the bar plot?
+   Answer: 
+
+
+Task 5.3: Body size ecology
+------------------------------------------------------------
+
+1. Which trophic group has the largest average body size?
+   Answer: 
+
+2. Why might raptors/carnivores tend to be larger than insectivores?
+   Answer: 
+
+3. How might body size affect vulnerability to habitat loss?
+   Answer: 
+
+
+================================================================================
+SECTION 6: PCA OF TRAITS
+================================================================================
+
+Task 6.1: Trait space structure
+------------------------------------------------------------
+
+1. Which traits mainly drive PC1 and PC2?
+   PC1: 
+   PC2: 
+
+2. Discuss where species with different trophic niches lie in this space:
+   Answer: 
+
+3. CODE UNDERSTANDING: What does PCA stand for and what does it do?
+   Answer: 
+
+4. Are species clustered by trophic niche or spread throughout trait space?
+   Answer: 
+
+
+================================================================================
+SECTION 7: CONSERVATION PRIORITIZATION EXERCISE
+================================================================================
+
+Task 7.1: Conservation priorities
+------------------------------------------------------------
+
+1. Which land cover type has the highest conservation value? Why?
+   Answer: 
+
+2. Would you prioritize differently if you weighted species richness more heavily?
+   Answer: 
+
+3. What other factors (not in this dataset) should inform conservation priorities?
+   Answer: 
+
+
+4. CODE UNDERSTANDING: How is the conservation_value calculated?
+   Answer: 
+
+
+================================================================================
+SECTION 8: WRAP-UP QUESTIONS
+================================================================================
+
+8.1. Synthesis questions
+------------------------------------------------------------
+
+1. How do species richness and functional diversity vary among land cover types?
+   Answer: 
+
+
+2. Which land cover types are at greatest risk if habitat loss continues?
+   Answer: 
+
+
+3. Which land cover types would you prioritize for conservation?
+   Answer: 
+
+
+4. Did you find trade-offs between conservation metrics?
+   Answer: 
+
+
+5. How do your findings link to Stewart et al. and Matthews et al.?
+   Answer: 
+
+
+8.2. Methodological reflection
+------------------------------------------------------------
+
+1. What are advantages of using citizen science data like eBird?
+   Answer: 
+
+
+2. What are potential biases or limitations of eBird data?
+   Answer: 
+
+
+3. How did accounting for observer effort change your interpretation?
+   Answer: 
+
+
+4. Why is it important to consider both taxonomic and functional diversity?
+   Answer: 
+
+
+8.3. Code understanding summary
+------------------------------------------------------------
+
+1. What is the pipe operator (|>) and why is it useful?
+   Answer: 
+
+
+2. Name three different types of plots you created. When would you use each?
+   - 
+   - 
+   - 
+
+
+3. What does group_by() do and why is it useful for ecological data?
+   Answer: 
+
+
+4. What's the difference between filter() and select()?
+   Answer: 
+
+
+5. Why do we often use summarise() after group_by()?
+   Answer: 
+
+
+8.5. Connection to real-world conservation
+------------------------------------------------------------
+
+1. How could you integrate real eBird data and detailed trait datasets at larger scales?
+   Answer: 
+
+
+2. What additional data would help you make better conservation recommendations?
+   Answer: 
+
+
+3. How might climate change interact with habitat loss to affect these communities?
+   Answer: 
+
+
+4. Top 3 recommendations for a conservation organization in Yucatan:
+   - 
+   - 
+   - 
+
+
+================================================================================
+ADDITIONAL NOTES AND OBSERVATIONS
+================================================================================
+
+Use this space for any additional observations, questions, or insights from the practical:
+
+
+
+
+
+
+
+
+
+
+================================================================================
+END OF RESPONSE SHEET
+================================================================================
